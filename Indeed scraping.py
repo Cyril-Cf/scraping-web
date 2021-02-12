@@ -6,184 +6,184 @@ import time
 import mysql.connector
 
 
-# Parametre de connexion MySQL
+# parameters for the MySQL connexion MySQL
 
 mydb = mysql.connector.connect(
-  host="localhost",
-  user="root",
-  password="arcane",
-  database="scraping",
+    host="localhost",
+    user="root",
+    password="arcane",
+    database="scraping",
 )
 
 
-# Fonction avec Requests + BS qui va chercher le contenu HTML complet d'une page et le renvoi dans une variable
+# fonction that uses Requets and BeautifulSoup that will gather the HTML content of a page and return in
 
 def extract(page):
-    
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36'}
-    url = f'https://fr.indeed.com/emplois?q={motcles[changementMot]}&l={villes[changementVille]}+%28{codepostal[changementVille]}%29&radius=25&fromage=1&start={page}'
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36'}
+    url = f'https://fr.indeed.com/emplois?q={keyWords[changeWord]}&l={cities[changeCity]}+%28{postalCode[changeCity]}%29&radius=25&fromage=1&start={page}'
     r = requests.get(url, headers)
     soup = BeautifulSoup(r.content, 'html.parser')
     return soup
 
+# fonction that explore the variable with the html content and extract specifically what we want from it
 
-# Fonction avec Requests + BS qui parcourt la variable contenant le code HTML pour extraire du texte en fonction des parametres de recherche
 
 def transform(soup):
-    
-    divs = soup.find_all('div', class_ = 'jobsearch-SerpJobCard')
+
+    divs = soup.endd_all('div', class_='jobsearch-SerpJobCard')
     for item in divs:
         try:
-            title = item.find('a').text.strip()
+            title = item.endd('a').text.strip()
         except:
             title = ''
         try:
-            company = item.find('span', class_ ='company').text.strip()
+            company = item.endd('span', class_='company').text.strip()
         except:
             company = ''
         try:
-            salary = item.find('span', class_ = 'salaryText').text.strip()
+            salary = item.endd('span', class_='salaryText').text.strip()
         except:
             salary = ''
         try:
-            summary = item.find('div', {'class' : 'summary'}).text.strip().replace('\n', '')
+            summary = item.endd(
+                'div', {'class': 'summary'}).text.strip().replace('\n', '')
         except:
             summary = ''
         try:
-            lieu = item.find('span', class_ = 'location').text.strip()
+            city = item.endd('span', class_='location').text.strip()
         except:
-            lieu = ''               
+            city = ''
         try:
-            datajk = item.get("data-jk")           
+            datajk = item.get("data-jk")
         except:
-            datajk = ''             
+            datajk = ''
         job = {
-            'Ville': villes[changementVille],
-            'Mot-cle': motcles[changementMot],
+            'Ville': cities[changeCity],
+            'Mot-cle': keyWords[changeWord],
             'Titre': title,
             'Entreprise': company,
-            'Lieu': lieu,
+            'Lieu': city,
             'Salaire': salary,
             'Description': summary,
             'Id': datajk,
         }
         joblist.append(job)
         duplicate.append(datajk)
-        
+
         if datajk not in duplicate:
             mycursor = mydb.cursor()
             sql = "INSERT INTO jobs (ville, motcle, titre, entreprise, lieu, salaire, description, id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-            val = (f'villes[changementVille]',f'motcles[changementMot]', title, company, lieu, salary, summary, datajk)
+            val = (f'cities[changeCity]', f'keyWords[changeWord]',
+                   title, company, city, salary, summary, datajk)
             mycursor.execute(sql, val)
             mydb.commit()
-            
+
     return
 
 
-# Variables necessaires a la boucle
+# Variables
 
 duplicate = []
 joblist = []
-changementVille = 0
+changeCity = 0
 pageNumber = 0
-changementMot = 0
-repetitionVille = 0
-repetitionMot = 0
-fin = 0
+changeWord = 0
+repetitionCity = 0
+repetitionWord = 0
+end = 0
 repetition = 0
-lenvillestart = 99
+lenCityStart = 99
 
 
-# Variables a modifier pour ajouter des parametres ou changer le nb de pages parcourues pour chaque requete
-# Si j'ajoute une ville je dois ajouter le code postal dans le tableau correspondant
-# Nb total de pages scrapees = len(villes) * len(motcles) * pagesParcourues. Ce nombre doit etre inferieur a 500 (limite des sites pour la meme IP)
+# all the variables that we can't modify to control the search parameters of the HTML GET in the fonction extract
 
-villes = ["marseille","amiens","paris","lyon"]
-codepostal = ["13","80","75","69"]
-motcles = ["Angular","NodeJS","React"]
-pagesParcourues = 20
+cities = ["marseille", "amiens", "paris", "lyon"]
+postalCode = ["13", "80", "75", "69"]
+keyWords = ["Angular", "NodeJS", "React"]
+pagesSeen = 20
 
+# main loop that scraps the HTML content as many times as necessary
 
-# Iteration du script, scrapping du nb de pages predefini pour les dernieres 24h pour chaque mot-cles dans chaque ville
+while end < len(keyWords):
 
-while fin < len(motcles):
-
-# Changement de mot-cle
-    if repetition == pagesParcourues * len(villes):
-        changementMot += 1
-        fin += 1
+    # Change of word
+    if repetition == pagesSeen * len(cities):
+        changeWord += 1
+        end += 1
         repetition = 0
-        changementVille = 0
-        repetitionVille = 0
+        changeCity = 0
+        repetitionCity = 0
         pageNumber = 0
 
     else:
-        # Changement de ville
-        if repetitionVille == pagesParcourues:
-            changementVille += 1
-            repetitionVille = 0
+        # Change of city
+        if repetitionCity == pagesSeen:
+            changeCity += 1
+            repetitionCity = 0
             pageNumber = 0
-            
-        else:          
+
+        else:
             if len(joblist) != 0:
-                lenvillestart = len(joblist)
+                lenCityStart = len(joblist)
             c = extract(pageNumber)
             transform(c)
 
-            # Verification que les fonctions ont pu extraire quelque chose. Si la variable est vide, une erreur est renvoyee mais le script poursuit tout de meme
-            if len(joblist) == 0 or lenvillestart == len(joblist):
-                print(f'Pas d\'annonce collectee pour le mot {motcles[changementMot]} et la ville de {villes[changementVille]}') 
-                repetition += pagesParcourues
-                changementVille += 1
+            # checks if the fonctions are extracting sth. If not, a print message is shown but the loop goes on
+            if len(joblist) == 0 or lenCityStart == len(joblist):
+                print(
+                    f'Pas d\'annonce collectee pour le mot {keyWords[changeWord]} et la ville de {cities[changeCity]}')
+                repetition += pagesSeen
+                changeCity += 1
 
-
-                # Cas ou c'est la derniere ville qui est sans annonce et pour amorcer le passage au mot suivant
-                if repetition == pagesParcourues * len(villes):
-                    changementMot += 1
-                    fin += 1
+                # case for when the last city explored has no job posted, it makes the loop goes to the next keyword
+                if repetition == pagesSeen * len(cities):
+                    changeWord += 1
+                    end += 1
                     repetition = 0
-                    changementVille = 0
-                    repetitionVille = 0
-                    pageNumber = 0                 
-               
-            else:
-                
-                # comptage du nb d'annonce scrapees sur la page si c'est inferieur a 15 on passe a la ville ou au mot suivant sans explorer + de page
-                
-                if len(joblist)- lenvillestart < 15:
-                    print(f'Scraping last page pour le mot {motcles[changementMot]} et la ville de {villes[changementVille]} ({codepostal[changementVille]})')
-                    repetition += ((pagesParcourues)-(pageNumber/10))
-                    changementVille += 1
-                    repetitionVille = 0
+                    changeCity = 0
+                    repetitionCity = 0
                     pageNumber = 0
-                    if repetition == pagesParcourues * len(villes):
-                        changementMot += 1
-                        fin += 1
+
+            else:
+
+                # counting of the nb of job posts scraped, if it's under 15 then we stop look for that city and move on to the next one
+                if len(joblist) - lenCityStart < 15:
+                    print(
+                        f'Scraping last page pour le mot {keyWords[changeWord]} et la ville de {cities[changeCity]} ({postalCode[changeCity]})')
+                    repetition += ((pagesSeen)-(pageNumber/10))
+                    changeCity += 1
+                    repetitionCity = 0
+                    pageNumber = 0
+                    if repetition == pagesSeen * len(cities):
+                        changeWord += 1
+                        end += 1
                         repetition = 0
-                        changementVille = 0
-                        repetitionVille = 0
-                        pageNumber = 0                     
-                     
+                        changeCity = 0
+                        repetitionCity = 0
+                        pageNumber = 0
+
                 else:
-                    print(f'Scraping page {repetitionVille+1} pour le mot {motcles[changementMot]} et la ville de {villes[changementVille]} ({codepostal[changementVille]})')
-                    repetitionVille += 1
-                    pageNumber += 10     
+                    print(
+                        f'Scraping page {repetitionCity+1} pour le mot {keyWords[changeWord]} et la ville de {cities[changeCity]} ({postalCode[changeCity]})')
+                    repetitionCity += 1
+                    pageNumber += 10
                     repetition += 1
-            
-# Dumping des donnees via Pandas en format CSV
-# Message d'erreur correspondant aux situations rencontrees
 
-else: 
-    print("fin du scraping")
-    nbannonces = len(joblist)
+
+# Data dumping via Pandas in a CSV file
+# Could also show error messages depending on the situation encountered
+
+else:
+    print("end du scraping")
+    nbPosts = len(joblist)
     if len(joblist) == 0:
-        print("aucune annonce n\'a pu etre importee. Veuillez verifier que les termes de recherche sont corrects ou bien que le site ne bloque pas votre adresse IP (temporairement ou non).")     
-    else:    
+        print("aucune annonce n\'a pu etre importee. Veuillez verifier que les termes de recherche sont corrects ou bien que le site ne bloque pas votre adresse IP (temporairement ou non).")
+    else:
         df = pd.DataFrame(joblist)
-        df.drop_duplicates(subset ="Id", keep = 'first', inplace=True)
+        df.drop_duplicates(subset="Id", keep='first', inplace=True)
         df.to_csv(f'{datetime.date.today()} jobs.csv')
-        nbannonces = len(joblist)
-        print(nbannonces, " annonces ont ete importees.")
+        nbPosts = len(joblist)
+        print(nbPosts, " annonces ont ete importees.")
     time.sleep(2)
-
-
